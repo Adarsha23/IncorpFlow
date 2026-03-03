@@ -5,9 +5,6 @@ from app.database import Base, engine
 from app.models import company, shareholder  # noqa: F401 – ensure models are registered
 from app.routers import companies
 
-# Create tables on startup (Supabase already has them after running the SQL schema)
-Base.metadata.create_all(bind=engine)
-
 app = FastAPI(
     title="Company Incorporation API",
     description="FastAPI backend for the multi-step company incorporation tool",

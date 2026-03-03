@@ -22,6 +22,8 @@ export interface Shareholder {
 export interface Company {
   id: string;
   name: string;
+  num_shareholders: number;
+  total_capital: number;
   company_type: CompanyType;
   jurisdiction: string;
   registered_address: string;
@@ -36,6 +38,8 @@ export interface Company {
 // Form data shapes (no id/timestamps)
 export interface CompanyFormData {
   name: string;
+  num_shareholders: number;
+  total_capital: number;
   company_type: CompanyType;
   jurisdiction: string;
   registered_address: string;

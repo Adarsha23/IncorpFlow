@@ -1,17 +1,20 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, field_validator
 
 from app.models.company import CompanyStatus
+from app.schemas.shareholder import ShareholderResponse
 
 
 class CompanyCreate(BaseModel):
     name: str
-    company_type: str
-    jurisdiction: str
-    registered_address: str
+    num_shareholders: int
+    total_capital: float
+    company_type: str = "Private Limited"
+    jurisdiction: str = "United States"
+    registered_address: str = "Default Address"
     email: EmailStr
     phone: Optional[str] = None
 
@@ -26,6 +29,8 @@ class CompanyCreate(BaseModel):
 class CompanyResponse(BaseModel):
     id: UUID
     name: str
+    num_shareholders: int
+    total_capital: float
     company_type: str
     jurisdiction: str
     registered_address: str
@@ -34,6 +39,6 @@ class CompanyResponse(BaseModel):
     status: CompanyStatus
     created_at: datetime
     updated_at: datetime
-    shareholders: list = []
+    shareholders: List[ShareholderResponse] = []
 
     model_config = {"from_attributes": True}
