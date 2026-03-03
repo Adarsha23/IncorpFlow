@@ -7,12 +7,27 @@ export const AdminPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'ALL' | 'DRAFT' | 'COMPLETED'>('ALL');
+  const [password, setPassword] = useState('');
+  const [isAuthorized, setIsAuthorized] = useState(false);
+
+  const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || 'admin123';
 
   useEffect(() => {
-    getAllCompanies()
-      .then(setCompanies)
-      .finally(() => setLoading(false));
-  }, []);
+    if (isAuthorized) {
+      getAllCompanies()
+        .then(setCompanies)
+        .finally(() => setLoading(false));
+    }
+  }, [isAuthorized]);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password === adminPassword) {
+      setIsAuthorized(true);
+    } else {
+      alert('Invalid password');
+    }
+  };
 
   const filtered = companies.filter(c => {
     const matchesSearch =
@@ -28,24 +43,59 @@ export const AdminPage: React.FC = () => {
     completed: companies.filter(c => c.status === 'COMPLETED').length,
   };
 
+  const formatCurrency = (val: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(val);
+  };
+
+  if (!isAuthorized) {
+    return (
+      <div className="login-gate">
+        <form className="login-card" onSubmit={handleLogin}>
+          <h2>Admin Access</h2>
+          <div className="form-field" style={{ marginBottom: '20px' }}>
+            <input 
+              type="password" 
+              placeholder=" " 
+              value={password} 
+              onChange={e => setPassword(e.target.value)} 
+            />
+            <label>Password</label>
+          </div>
+          <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+            Login
+          </button>
+          <div style={{ marginTop: '20px' }}>
+            <a href="/" style={{ fontSize: '12px', color: 'var(--text-muted)', textDecoration: 'none' }}>Back to form</a>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div className="admin-page">
       <header className="admin-header">
         <div className="admin-brand">
-          <span className="brand-icon">⚡</span>
           <span className="brand-name">FounderDesk</span>
           <span className="admin-badge">Admin</span>
         </div>
-        <a href="/" className="btn btn-secondary btn-sm">+ New Incorporation</a>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <a href="/" className="btn btn-secondary btn-sm">Home</a>
+          <button onClick={() => setIsAuthorized(false)} className="btn btn-secondary btn-sm">Logout</button>
+        </div>
       </header>
 
       <main className="admin-main">
         <div className="admin-title-section">
-          <h1>Companies</h1>
-          <p className="admin-subtitle">All incorporation applications</p>
+          <h1>Applications</h1>
+          <p className="admin-subtitle">Monitoring all incorporation requests</p>
         </div>
 
-        {/* Stats Cards */}
         <div className="stats-grid">
           <div className="stat-card">
             <span className="stat-num">{stats.total}</span>
@@ -61,19 +111,15 @@ export const AdminPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Controls */}
         <div className="table-controls">
           <div className="search-wrap">
-            <svg className="search-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5"/>
-              <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
             <input
               type="search"
-              placeholder="Search companies…"
+              placeholder="Search companies..."
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="search-input"
+              style={{ paddingLeft: '14px' }}
             />
           </div>
           <div className="filter-tabs">
@@ -85,28 +131,25 @@ export const AdminPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Table */}
         {loading ? (
           <div className="loading-state">
             <div className="loading-spinner" />
-            <p>Loading companies…</p>
+            <p>Fetching data...</p>
           </div>
         ) : filtered.length === 0 ? (
           <div className="empty-state">
-            <span>🏢</span>
-            <p>{companies.length === 0 ? 'No companies yet.' : 'No results match your search.'}</p>
+            <p>{companies.length === 0 ? 'No applications yet.' : 'No matches found.'}</p>
           </div>
         ) : (
-          <div className="table-wrapper">
+          <div className="admin-table-container">
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>Company</th>
-                  <th>Type</th>
-                  <th>Jurisdiction</th>
-                  <th>Shareholders</th>
+                  <th>Entity</th>
+                  <th>Capital</th>
+                  <th>Equity</th>
                   <th>Status</th>
-                  <th>Created</th>
+                  <th>Date</th>
                 </tr>
               </thead>
               <tbody>
@@ -115,24 +158,29 @@ export const AdminPage: React.FC = () => {
                     <td>
                       <div className="company-cell">
                         <span className="company-name">{company.name}</span>
-                        <span className="company-email">{company.email}</span>
+                        <span className="company-email">{company.company_type} • {company.email}</span>
                       </div>
                     </td>
-                    <td><span className="type-badge">{company.company_type}</span></td>
-                    <td className="jurisdiction-cell">{company.jurisdiction}</td>
                     <td>
-                      <span className="shareholder-count">{company.shareholders.length}</span>
+                      <span>{formatCurrency(company.total_capital)}</span>
+                    </td>
+                    <td>
+                      <div style={{ width: '100px' }}>
+                        <div className="shares-bar">
+                          <div className="shares-fill" style={{ width: `${(company.shareholders.length / company.num_shareholders) * 100}%` }} />
+                        </div>
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                          {company.shareholders.length} / {company.num_shareholders} profiles
+                        </span>
+                      </div>
                     </td>
                     <td>
                       <span className={`status-badge status-${company.status.toLowerCase()}`}>
-                        {company.status === 'COMPLETED' ? '✓ ' : '◐ '}
                         {company.status}
                       </span>
                     </td>
-                    <td className="date-cell">
-                      {new Date(company.created_at).toLocaleDateString('en-US', {
-                        month: 'short', day: 'numeric', year: 'numeric',
-                      })}
+                    <td style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                      {new Date(company.created_at).toLocaleDateString()}
                     </td>
                   </tr>
                 ))}
