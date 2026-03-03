@@ -10,7 +10,7 @@ import type {
 } from '../types';
 
 const COMPANY_ID_KEY = 'incorporation_company_id';
-const STEPS = ['Company Info', 'Shareholders', 'Complete'];
+const STEPS = ['Company', 'Equity', 'Finalize'];
 
 const COMPANY_TYPES: CompanyType[] = [
   'LLC', 'Corporation', 'S-Corporation', 'Partnership', 'Sole Proprietorship',
@@ -22,7 +22,16 @@ const JURISDICTIONS = [
 ];
 
 function emptyCompanyForm(): CompanyFormData {
-  return { name: '', company_type: 'LLC', jurisdiction: '', registered_address: '', email: '', phone: '' };
+  return { 
+    name: '', 
+    num_shareholders: 1, 
+    total_capital: 0,
+    company_type: 'LLC', 
+    jurisdiction: 'Delaware, USA', 
+    registered_address: '', 
+    email: '', 
+    phone: '' 
+  };
 }
 
 function emptyShareholder(): ShareholderFormData {
@@ -48,16 +57,16 @@ export const IncorporationForm: React.FC = () => {
         setCompanyId(draft.id);
         setCompany({
           name: draft.name,
+          num_shareholders: draft.num_shareholders,
+          total_capital: draft.total_capital,
           company_type: draft.company_type,
           jurisdiction: draft.jurisdiction,
           registered_address: draft.registered_address,
           email: draft.email,
           phone: draft.phone ?? '',
         });
-        toast.success('Draft restored — continue where you left off');
         setStep(2);
       } else {
-        // Already completed
         localStorage.removeItem(COMPANY_ID_KEY);
       }
     } catch {
@@ -67,14 +76,15 @@ export const IncorporationForm: React.FC = () => {
 
   useEffect(() => { restoreDraft(); }, [restoreDraft]);
 
-  // ── Step 1 validation ──────────────────────────────────────────────────────
   const validateStep1 = (): boolean => {
     const e: Record<string, string> = {};
-    if (!company.name.trim()) e.name = 'Company name is required';
-    if (!company.jurisdiction) e.jurisdiction = 'Please select a jurisdiction';
-    if (!company.registered_address.trim()) e.registered_address = 'Address is required';
-    if (!company.email.trim()) e.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(company.email)) e.email = 'Valid email required';
+    if (!company.name.trim()) e.name = 'Required';
+    if (company.num_shareholders < 1) e.num_shareholders = 'Min 1';
+    if (company.total_capital <= 0) e.total_capital = 'Must be > 0';
+    if (!company.jurisdiction) e.jurisdiction = 'Select one';
+    if (!company.registered_address.trim()) e.registered_address = 'Required';
+    if (!company.email.trim()) e.email = 'Required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(company.email)) e.email = 'Invalid';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -87,17 +97,21 @@ export const IncorporationForm: React.FC = () => {
       const result = await createCompany(company);
       setCompanyId(result.id);
       localStorage.setItem(COMPANY_ID_KEY, result.id);
-      toast.success('Company draft saved!');
+      
+      const count = Math.min(Math.max(company.num_shareholders, 1), 20);
+      setShareholders(Array(count).fill(null).map(() => emptyShareholder()));
+      setShareholderErrors(Array(count).fill(null).map(() => ({})));
+      
+      toast.success('Information saved');
       setStep(2);
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Failed to save company';
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Failed to save';
       toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
 
-  // ── Shareholder field helpers ──────────────────────────────────────────────
   const updateShareholder = (index: number, field: keyof ShareholderFormData, value: string | number) => {
     setShareholders(prev => prev.map((s, i) => i === index ? { ...s, [field]: value } : s));
   };
@@ -115,22 +129,21 @@ export const IncorporationForm: React.FC = () => {
 
   const totalShares = shareholders.reduce((sum, s) => sum + Number(s.share_percentage || 0), 0);
 
-  // ── Step 2 validation ──────────────────────────────────────────────────────
   const validateStep2 = (): boolean => {
     const errs = shareholders.map(s => {
       const e: Record<string, string> = {};
-      if (!s.name.trim()) e.name = 'Name required';
-      if (!s.email.trim()) e.email = 'Email required';
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.email)) e.email = 'Valid email required';
-      if (!s.nationality.trim()) e.nationality = 'Nationality required';
-      if (!s.share_percentage || s.share_percentage <= 0) e.share_percentage = 'Must be > 0%';
+      if (!s.name.trim()) e.name = 'Required';
+      if (!s.email.trim()) e.email = 'Required';
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.email)) e.email = 'Invalid';
+      if (!s.nationality.trim()) e.nationality = 'Required';
+      if (!s.share_percentage || s.share_percentage <= 0) e.share_percentage = '> 0%';
       return e;
     });
     setShareholderErrors(errs);
     const anyError = errs.some(e => Object.keys(e).length > 0);
     if (anyError) return false;
     if (Math.abs(totalShares - 100) > 0.01) {
-      toast.error(`Shares must total 100% (currently ${totalShares.toFixed(2)}%)`);
+      toast.error(`Total must be 100% (currently ${totalShares.toFixed(2)}%)`);
       return false;
     }
     return true;
@@ -145,26 +158,24 @@ export const IncorporationForm: React.FC = () => {
         shareholders: shareholders.map(s => ({ ...s, share_percentage: Number(s.share_percentage) })),
       });
       localStorage.removeItem(COMPANY_ID_KEY);
-      toast.success('Incorporation complete! 🎉');
+      toast.success('Application submitted');
       setStep(3);
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Failed to submit shareholders';
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Failed to submit';
       toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
 
-  // ── Rendering ──────────────────────────────────────────────────────────────
   if (step === 3) {
     return (
-      <div className="page-center">
+      <div className="form-page">
         <div className="success-card">
-          <div className="success-icon">✓</div>
-          <h1>Incorporation Complete!</h1>
-          <p>Your company has been successfully incorporated. Check your email for next steps.</p>
+          <h1>Incorporation Complete</h1>
+          <p>Your application has been received and is being processed.</p>
           <button className="btn btn-primary" onClick={() => { setStep(1); setCompany(emptyCompanyForm()); setShareholders([emptyShareholder()]); setCompanyId(null); }}>
-            Start a New Incorporation
+            Start New Incorporation
           </button>
         </div>
       </div>
@@ -173,67 +184,78 @@ export const IncorporationForm: React.FC = () => {
 
   return (
     <div className="form-page">
-      <div className="form-container">
-        <div className="form-header">
-          <div className="brand">
-            <span className="brand-icon">⚡</span>
-            <span className="brand-name">FounderDesk</span>
-          </div>
-          <p className="form-subtitle">Company Incorporation</p>
+      <header className="top-bar">
+        <div className="brand">
+          <span className="brand-name">FounderDesk</span>
         </div>
+        <a href="/admin" className="btn btn-secondary btn-sm">Admin Dashboard</a>
+      </header>
 
+      <div className="form-container">
         <Stepper currentStep={step} steps={STEPS} />
 
         {step === 1 && (
           <form onSubmit={handleStep1Submit} className="form-body" noValidate>
             <h2 className="step-title">Company Information</h2>
-            <p className="step-desc">Let us start with the basics about your company.</p>
+            <p className="step-desc">Enter the primary details for your incorporation.</p>
 
             <div className="form-grid">
-              <div className={`form-group span-2 ${errors.name ? 'has-error' : ''}`}>
-                <label htmlFor="name">Company Name <span className="required">*</span></label>
-                <input id="name" type="text" placeholder="Acme Inc." value={company.name} onChange={e => setCompany(p => ({ ...p, name: e.target.value }))} />
+              <div className={`form-field span-2 ${errors.name ? 'has-error' : ''}`}>
+                <input id="name" type="text" placeholder=" " value={company.name} onChange={e => setCompany(p => ({ ...p, name: e.target.value }))} />
+                <label htmlFor="name">Company Name</label>
                 {errors.name && <span className="error-msg">{errors.name}</span>}
               </div>
 
-              <div className="form-group">
-                <label htmlFor="company_type">Company Type <span className="required">*</span></label>
+              <div className={`form-field ${errors.num_shareholders ? 'has-error' : ''}`}>
+                <input id="num_shareholders" type="number" min="1" max="20" placeholder=" " value={company.num_shareholders} onChange={e => setCompany(p => ({ ...p, num_shareholders: parseInt(e.target.value) || 0 }))} />
+                <label htmlFor="num_shareholders">Shareholders</label>
+                {errors.num_shareholders && <span className="error-msg">{errors.num_shareholders}</span>}
+              </div>
+
+              <div className={`form-field ${errors.total_capital ? 'has-error' : ''}`}>
+                <input id="total_capital" type="number" min="0" step="1000" placeholder=" " value={company.total_capital} onChange={e => setCompany(p => ({ ...p, total_capital: parseFloat(e.target.value) || 0 }))} />
+                <label htmlFor="total_capital">Total Capital ($)</label>
+                {errors.total_capital && <span className="error-msg">{errors.total_capital}</span>}
+              </div>
+
+              <div className="form-field">
                 <select id="company_type" value={company.company_type} onChange={e => setCompany(p => ({ ...p, company_type: e.target.value as CompanyType }))}>
                   {COMPANY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
+                <label htmlFor="company_type">Company Type</label>
               </div>
 
-              <div className={`form-group ${errors.jurisdiction ? 'has-error' : ''}`}>
-                <label htmlFor="jurisdiction">Jurisdiction <span className="required">*</span></label>
+              <div className={`form-field ${errors.jurisdiction ? 'has-error' : ''}`}>
                 <select id="jurisdiction" value={company.jurisdiction} onChange={e => setCompany(p => ({ ...p, jurisdiction: e.target.value }))}>
-                  <option value="">Select jurisdiction…</option>
+                  <option value="">Select jurisdiction</option>
                   {JURISDICTIONS.map(j => <option key={j} value={j}>{j}</option>)}
                 </select>
+                <label htmlFor="jurisdiction">Jurisdiction</label>
                 {errors.jurisdiction && <span className="error-msg">{errors.jurisdiction}</span>}
               </div>
 
-              <div className={`form-group span-2 ${errors.registered_address ? 'has-error' : ''}`}>
-                <label htmlFor="registered_address">Registered Address <span className="required">*</span></label>
-                <input id="registered_address" type="text" placeholder="123 Main St, Wilmington, DE 19801" value={company.registered_address} onChange={e => setCompany(p => ({ ...p, registered_address: e.target.value }))} />
+              <div className={`form-field span-2 ${errors.registered_address ? 'has-error' : ''}`}>
+                <input id="registered_address" type="text" placeholder=" " value={company.registered_address} onChange={e => setCompany(p => ({ ...p, registered_address: e.target.value }))} />
+                <label htmlFor="registered_address">Registered Address</label>
                 {errors.registered_address && <span className="error-msg">{errors.registered_address}</span>}
               </div>
 
-              <div className={`form-group ${errors.email ? 'has-error' : ''}`}>
-                <label htmlFor="email">Business Email <span className="required">*</span></label>
-                <input id="email" type="email" placeholder="hello@acme.com" value={company.email} onChange={e => setCompany(p => ({ ...p, email: e.target.value }))} />
+              <div className={`form-field ${errors.email ? 'has-error' : ''}`}>
+                <input id="email" type="email" placeholder=" " value={company.email} onChange={e => setCompany(p => ({ ...p, email: e.target.value }))} />
+                <label htmlFor="email">Business Email</label>
                 {errors.email && <span className="error-msg">{errors.email}</span>}
               </div>
 
-              <div className="form-group">
-                <label htmlFor="phone">Phone <span className="optional">(optional)</span></label>
-                <input id="phone" type="tel" placeholder="+1 555-000-0000" value={company.phone ?? ''} onChange={e => setCompany(p => ({ ...p, phone: e.target.value }))} />
+              <div className="form-field">
+                <input id="phone" type="tel" placeholder=" " value={company.phone ?? ''} onChange={e => setCompany(p => ({ ...p, phone: e.target.value }))} />
+                <label htmlFor="phone">Phone (Optional)</label>
               </div>
             </div>
 
             <div className="form-actions">
               <button type="submit" className="btn btn-primary btn-lg" disabled={loading}>
-                {loading ? <span className="spinner" /> : null}
-                {loading ? 'Saving…' : 'Save & Continue →'}
+                {loading && <span className="spinner" style={{ marginRight: '8px' }} />}
+                {loading ? 'Saving' : 'Continue'}
               </button>
             </div>
           </form>
@@ -241,12 +263,14 @@ export const IncorporationForm: React.FC = () => {
 
         {step === 2 && (
           <form onSubmit={handleStep2Submit} className="form-body" noValidate>
-            <h2 className="step-title">Shareholders</h2>
-            <p className="step-desc">Add all shareholders. Total shares must equal 100%.</p>
+            <h2 className="step-title">Equity Details</h2>
+            <p className="step-desc">Distribute shares among the {company.num_shareholders} shareholders.</p>
 
             <div className={`shares-bar ${Math.abs(totalShares - 100) < 0.01 ? 'valid' : ''}`}>
               <div className="shares-fill" style={{ width: `${Math.min(totalShares, 100)}%` }} />
-              <span className="shares-label">{totalShares.toFixed(1)}% / 100%</span>
+            </div>
+            <div className="shares-label" style={{ marginBottom: '24px', textAlign: 'right', fontSize: '11px', color: 'var(--text-muted)' }}>
+              Total: {totalShares.toFixed(1)}% / 100%
             </div>
 
             <div className="shareholders-list">
@@ -255,40 +279,40 @@ export const IncorporationForm: React.FC = () => {
                   <div className="shareholder-header">
                     <span className="shareholder-num">Shareholder {idx + 1}</span>
                     {shareholders.length > 1 && (
-                      <button type="button" className="btn-remove" onClick={() => removeShareholder(idx)} aria-label="Remove shareholder">×</button>
+                      <button type="button" className="btn-remove" onClick={() => removeShareholder(idx)}>Remove</button>
                     )}
                   </div>
 
                   <div className="form-grid">
-                    <div className={`form-group ${shareholderErrors[idx]?.name ? 'has-error' : ''}`}>
-                      <label>Full Name <span className="required">*</span></label>
-                      <input type="text" placeholder="Jane Doe" value={sh.name} onChange={e => updateShareholder(idx, 'name', e.target.value)} />
+                    <div className={`form-field ${shareholderErrors[idx]?.name ? 'has-error' : ''}`}>
+                      <input id={`sh-name-${idx}`} type="text" placeholder=" " value={sh.name} onChange={e => updateShareholder(idx, 'name', e.target.value)} />
+                      <label htmlFor={`sh-name-${idx}`}>Full Name</label>
                       {shareholderErrors[idx]?.name && <span className="error-msg">{shareholderErrors[idx].name}</span>}
                     </div>
 
-                    <div className={`form-group ${shareholderErrors[idx]?.email ? 'has-error' : ''}`}>
-                      <label>Email <span className="required">*</span></label>
-                      <input type="email" placeholder="jane@example.com" value={sh.email} onChange={e => updateShareholder(idx, 'email', e.target.value)} />
+                    <div className={`form-field ${shareholderErrors[idx]?.email ? 'has-error' : ''}`}>
+                      <input id={`sh-email-${idx}`} type="email" placeholder=" " value={sh.email} onChange={e => updateShareholder(idx, 'email', e.target.value)} />
+                      <label htmlFor={`sh-email-${idx}`}>Email</label>
                       {shareholderErrors[idx]?.email && <span className="error-msg">{shareholderErrors[idx].email}</span>}
                     </div>
 
-                    <div className={`form-group ${shareholderErrors[idx]?.nationality ? 'has-error' : ''}`}>
-                      <label>Nationality <span className="required">*</span></label>
-                      <input type="text" placeholder="American" value={sh.nationality} onChange={e => updateShareholder(idx, 'nationality', e.target.value)} />
+                    <div className={`form-field ${shareholderErrors[idx]?.nationality ? 'has-error' : ''}`}>
+                      <input id={`sh-nat-${idx}`} type="text" placeholder=" " value={sh.nationality} onChange={e => updateShareholder(idx, 'nationality', e.target.value)} />
+                      <label htmlFor={`sh-nat-${idx}`}>Nationality</label>
                       {shareholderErrors[idx]?.nationality && <span className="error-msg">{shareholderErrors[idx].nationality}</span>}
                     </div>
 
-                    <div className={`form-group ${shareholderErrors[idx]?.share_percentage ? 'has-error' : ''}`}>
-                      <label>Share % <span className="required">*</span></label>
-                      <input type="number" placeholder="50" min="0.01" max="100" step="0.01" value={sh.share_percentage || ''} onChange={e => updateShareholder(idx, 'share_percentage', parseFloat(e.target.value) || 0)} />
+                    <div className={`form-field ${shareholderErrors[idx]?.share_percentage ? 'has-error' : ''}`}>
+                      <input id={`sh-pc-${idx}`} type="number" placeholder=" " min="0.01" max="100" step="0.01" value={sh.share_percentage || ''} onChange={e => updateShareholder(idx, 'share_percentage', parseFloat(e.target.value) || 0)} />
+                      <label htmlFor={`sh-pc-${idx}`}>Equity (%)</label>
                       {shareholderErrors[idx]?.share_percentage && <span className="error-msg">{shareholderErrors[idx].share_percentage}</span>}
                     </div>
 
-                    <div className="form-group">
-                      <label>Share Type</label>
-                      <select value={sh.share_type} onChange={e => updateShareholder(idx, 'share_type', e.target.value as ShareType)}>
+                    <div className="form-field">
+                      <select id={`sh-type-${idx}`} value={sh.share_type} onChange={e => updateShareholder(idx, 'share_type', e.target.value as ShareType)}>
                         {SHARE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                       </select>
+                      <label htmlFor={`sh-type-${idx}`}>Share Type</label>
                     </div>
                   </div>
                 </div>
@@ -298,10 +322,10 @@ export const IncorporationForm: React.FC = () => {
             <button type="button" className="btn btn-ghost" onClick={addShareholder}>+ Add Shareholder</button>
 
             <div className="form-actions">
-              <button type="button" className="btn btn-secondary" onClick={() => setStep(1)}>← Back</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setStep(1)}>Back</button>
               <button type="submit" className="btn btn-primary btn-lg" disabled={loading}>
-                {loading ? <span className="spinner" /> : null}
-                {loading ? 'Submitting…' : 'Complete Incorporation →'}
+                {loading && <span className="spinner" style={{ marginRight: '8px' }} />}
+                {loading ? 'Processing' : 'Finalize Application'}
               </button>
             </div>
           </form>
