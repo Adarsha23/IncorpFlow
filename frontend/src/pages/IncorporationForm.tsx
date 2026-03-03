@@ -47,6 +47,18 @@ export const IncorporationForm: React.FC = () => {
   const [shareholders, setShareholders] = useState<ShareholderFormData[]>([emptyShareholder()]);
   const [shareholderErrors, setShareholderErrors] = useState<Record<string, string>[]>([{}]);
 
+  const handleCancel = () => {
+    if (window.confirm('Are you sure? All progress will be lost.')) {
+      localStorage.removeItem(COMPANY_ID_KEY);
+      setCompany(emptyCompanyForm());
+      setShareholders([emptyShareholder()]);
+      setCompanyId(null);
+      setStep(1);
+      setErrors({});
+      toast.success('Application cancelled');
+    }
+  };
+
   // On mount: restore draft from localStorage
   const restoreDraft = useCallback(async () => {
     const savedId = localStorage.getItem(COMPANY_ID_KEY);
@@ -253,6 +265,7 @@ export const IncorporationForm: React.FC = () => {
             </div>
 
             <div className="form-actions">
+              <button type="button" className="btn btn-danger" onClick={handleCancel}>Cancel</button>
               <button type="submit" className="btn btn-primary btn-lg" disabled={loading}>
                 {loading && <span className="spinner" style={{ marginRight: '8px' }} />}
                 {loading ? 'Saving' : 'Continue'}
@@ -322,8 +335,11 @@ export const IncorporationForm: React.FC = () => {
             <button type="button" className="btn btn-ghost" onClick={addShareholder}>+ Add Shareholder</button>
 
             <div className="form-actions">
-              <button type="button" className="btn btn-secondary" onClick={() => setStep(1)}>Back</button>
-              <button type="submit" className="btn btn-primary btn-lg" disabled={loading}>
+              <div style={{ display: 'flex', gap: '12px', flex: 1 }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setStep(1)} style={{ flex: 1 }}>Back</button>
+                <button type="button" className="btn btn-danger" onClick={handleCancel} style={{ flex: 1 }}>Cancel</button>
+              </div>
+              <button type="submit" className="btn btn-primary btn-lg" disabled={loading} style={{ flex: 2 }}>
                 {loading && <span className="spinner" style={{ marginRight: '8px' }} />}
                 {loading ? 'Processing' : 'Finalize Application'}
               </button>

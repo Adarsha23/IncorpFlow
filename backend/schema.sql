@@ -10,6 +10,8 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE IF NOT EXISTS companies (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
+    num_shareholders INTEGER NOT NULL DEFAULT 1,
+    total_capital FLOAT NOT NULL DEFAULT 0,
     company_type VARCHAR(100) NOT NULL,
     jurisdiction VARCHAR(100) NOT NULL,
     registered_address VARCHAR(500) NOT NULL,

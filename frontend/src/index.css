@@ -54,8 +54,11 @@ body,
 
 /* ── Typography ────────────────────────────────── */
 h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.5rem; }
-h2 { font-size: 1.25rem; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 1rem; }
+h2 { font-size: 1.25rem; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 8px; }
 p { color: var(--text-muted); }
+
+.step-title { margin-bottom: 8px; }
+.step-desc { margin-bottom: 40px; font-size: 14px; display: block; }
 
 /* ── Buttons ───────────────────────────────────── */
 .btn {
@@ -92,6 +95,16 @@ p { color: var(--text-muted); }
 .btn-secondary:hover:not(:disabled) {
   color: var(--text-primary);
   border-color: var(--text-muted);
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--danger);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+.btn-danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.05);
+  border-color: var(--danger);
 }
 
 .btn-ghost {
@@ -167,7 +180,7 @@ p { color: var(--text-muted); }
 .form-field input,
 .form-field select {
   width: 100%;
-  background: transparent !important; /* Force transparent even with autofill */
+  background: transparent !important;
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
   color: var(--text-primary) !important;
@@ -177,13 +190,9 @@ p { color: var(--text-muted); }
   transition: all 0.2s ease;
 }
 
-/* Fix browser autofill white background */
-input:-webkit-autofill,
-input:-webkit-autofill:hover,
-input:-webkit-autofill:focus {
+input:-webkit-autofill {
   -webkit-text-fill-color: var(--text-primary) !important;
   -webkit-box-shadow: 0 0 0px 1000px var(--bg-surface) inset !important;
-  transition: background-color 5000s ease-in-out 0s;
 }
 
 .form-field label {
@@ -198,7 +207,6 @@ input:-webkit-autofill:focus {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   pointer-events: none;
-  transition: all 0.2s ease;
 }
 
 .form-field input:focus,
@@ -210,10 +218,6 @@ input:-webkit-autofill:focus {
   color: var(--accent);
 }
 
-.form-field.has-error input,
-.form-field.has-error select { border-color: var(--danger); }
-.form-field.has-error label { color: var(--danger); }
-
 .error-msg { font-size: 11px; color: var(--danger); margin-top: 5px; font-weight: 500; }
 
 .form-actions {
@@ -221,7 +225,7 @@ input:-webkit-autofill:focus {
   justify-content: space-between;
   align-items: center;
   margin-top: 40px;
-  gap: 16px;
+  gap: 12px;
 }
 .form-actions .btn { flex: 1; }
 .form-actions .btn-primary { flex: 2; }
@@ -242,12 +246,11 @@ input:-webkit-autofill:focus {
   align-items: center;
   margin-bottom: 24px;
 }
-.shareholder-num { font-size: 12px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; }
 
 /* ── Stepper ───────────────────────────────────── */
 .stepper { display: flex; justify-content: center; gap: 16px; margin-bottom: 40px; }
 .step-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border); transition: all 0.3s; }
-.step-dot.active { background: var(--accent); transform: scale(1.3); box-shadow: 0 0 15px var(--accent-glow); }
+.step-dot.active { background: var(--accent); transform: scale(1.3); }
 .step-dot.completed { background: var(--success); }
 
 /* ── Admin Page ────────────────────────────────── */
@@ -273,6 +276,8 @@ input:-webkit-autofill:focus {
 }
 .stat-num { font-size: 32px; font-weight: 800; margin-bottom: 4px; }
 .stat-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; }
+.accent-draft { color: var(--warning); }
+.accent-completed { color: var(--success); }
 
 .table-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
 .search-input { 
@@ -295,10 +300,6 @@ input:-webkit-autofill:focus {
 .admin-table { width: 100%; border-collapse: collapse; }
 .admin-table th { text-align: left; padding: 16px; font-size: 11px; font-weight: 700; color: var(--text-muted); border-bottom: 1px solid var(--border-soft); background: #161e2d; }
 .admin-table td { padding: 16px; border-bottom: 1px solid var(--border-soft); color: var(--text-secondary); }
-.admin-table tr:hover td { background: var(--bg-elevated); }
-
-.company-name { display: block; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
-.company-email { font-size: 12px; color: var(--text-muted); }
 
 .status-badge { font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 4px; border: 1px solid transparent; }
 .status-draft { background: rgba(245, 158, 11, 0.1); color: var(--warning); border-color: rgba(245, 158, 11, 0.2); }
@@ -306,7 +307,6 @@ input:-webkit-autofill:focus {
 
 .shares-bar { height: 6px; background: var(--bg-elevated); border-radius: 3px; overflow: hidden; margin-bottom: 6px; width: 120px; }
 .shares-fill { height: 100%; background: var(--accent); }
-.shares-bar.valid .shares-fill { background: var(--success); }
 
 /* ── Success Card ──────────────────────────────── */
 .success-card { text-align: center; padding: 60px 40px; }
@@ -314,5 +314,8 @@ input:-webkit-autofill:focus {
 .success-card p { margin-bottom: 40px; font-size: 16px; }
 
 /* ── Login Gate ────────────────────────────────── */
-.login-gate { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-.login-card { background: var(--bg-surface); border: 1px solid var(--border-soft); border-radius: var(--radius-xl); padding: 48px; width: 100%; max-width: 400px; text-align: center; }
+.login-gate { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; background: var(--bg-base); }
+.login-card { background: var(--bg-surface); border: 1px solid var(--border-soft); border-radius: var(--radius-xl); padding: 48px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4); }
+.login-card h2 { margin-bottom: 32px; font-size: 1.5rem; }
+.spinner { width: 16px; height: 16px; border: 2px solid rgba(255, 255, 255, 0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
