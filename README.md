@@ -102,7 +102,3 @@ For local development, create a .env file in both the backend and frontend direc
 - Equity Validation: Real-time calculation ensures total equity distribution equals 100%.
 - Admin Portal: A secure dashboard displaying company metrics, total capital, and status filtering.
 - Design System: A dedicated CSS implementation focused on premium, dark-mode SaaS aesthetics with custom outlined input fields.
-
-## Deployment Notes
-
-Both the backend and frontend include vercel.json configurations for seamless deployment to Vercel. Ensure that all environment variables are correctly set in your deployment provider settings.
