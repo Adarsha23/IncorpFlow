@@ -40,13 +40,20 @@ function emptyShareholder(): ShareholderFormData {
 
 export const IncorporationForm: React.FC = () => {
   const [step, setStep] = useState(1);
+  // chill while we talk to the server
   const [loading, setLoading] = useState(false);
+  // the id from the backend so we can find this company later
   const [companyId, setCompanyId] = useState<string | null>(null);
+  // user input for the company setup
   const [company, setCompany] = useState<CompanyFormData>(emptyCompanyForm());
+  // track missing shit or typos user made
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // the squad of owners. starts with one person
   const [shareholders, setShareholders] = useState<ShareholderFormData[]>([emptyShareholder()]);
+  // track if the owners messed up their fields
   const [shareholderErrors, setShareholderErrors] = useState<Record<string, string>[]>([{}]);
 
+  // wipe everything if user wants out
   const handleCancel = () => {
     if (window.confirm('Are you sure? All progress will be lost.')) {
       localStorage.removeItem(COMPANY_ID_KEY);
@@ -59,11 +66,13 @@ export const IncorporationForm: React.FC = () => {
     }
   };
 
-  // On mount: restore draft from localStorage
+  // check if user refreshed and restore their progress
   const restoreDraft = useCallback(async () => {
     const savedId = localStorage.getItem(COMPANY_ID_KEY);
-    if (!savedId) return;
+    if (!savedId) return; // nothing saved, moving on
+    
     try {
+      // get the old data from the server
       const draft = await getCompany(savedId);
       if (draft.status === 'DRAFT') {
         setCompanyId(draft.id);
@@ -86,8 +95,10 @@ export const IncorporationForm: React.FC = () => {
     }
   }, []);
 
+  // run this the second the page loads
   useEffect(() => { restoreDraft(); }, [restoreDraft]);
 
+  // check if step 1 is a mess
   const validateStep1 = (): boolean => {
     const e: Record<string, string> = {};
     if (!company.name.trim()) e.name = 'Required';
@@ -101,21 +112,26 @@ export const IncorporationForm: React.FC = () => {
     return Object.keys(e).length === 0;
   };
 
+  // user hit continue. valid data is a must
   const handleStep1Submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateStep1()) return;
+    if (!validateStep1()) return; // stop if data is trash
+    
     setLoading(true);
     try {
+      // blast the company info to the backend
       const result = await createCompany(company);
+      
+      // save the new id so we dont lose it
       setCompanyId(result.id);
       localStorage.setItem(COMPANY_ID_KEY, result.id);
-      
+      // set the number of shareholders
       const count = Math.min(Math.max(company.num_shareholders, 1), 20);
       setShareholders(Array(count).fill(null).map(() => emptyShareholder()));
       setShareholderErrors(Array(count).fill(null).map(() => ({})));
       
       toast.success('Information saved');
-      setStep(2);
+      setStep(2); // move to the next step
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Failed to save';
       toast.error(msg);
@@ -124,15 +140,18 @@ export const IncorporationForm: React.FC = () => {
     }
   };
 
+  // update the owner info as they type
   const updateShareholder = (index: number, field: keyof ShareholderFormData, value: string | number) => {
     setShareholders(prev => prev.map((s, i) => i === index ? { ...s, [field]: value } : s));
   };
 
+  // invite another person to the owner squad
   const addShareholder = () => {
     setShareholders(prev => [...prev, emptyShareholder()]);
     setShareholderErrors(prev => [...prev, {}]);
   };
 
+  // kick someone out of the owner squad
   const removeShareholder = (index: number) => {
     if (shareholders.length === 1) return;
     setShareholders(prev => prev.filter((_, i) => i !== index));
@@ -141,6 +160,7 @@ export const IncorporationForm: React.FC = () => {
 
   const totalShares = shareholders.reduce((sum, s) => sum + Number(s.share_percentage || 0), 0);
 
+  // make sure equity math is mathing
   const validateStep2 = (): boolean => {
     const errs = shareholders.map(s => {
       const e: Record<string, string> = {};
@@ -153,7 +173,7 @@ export const IncorporationForm: React.FC = () => {
     });
     setShareholderErrors(errs);
     const anyError = errs.some(e => Object.keys(e).length > 0);
-    if (anyError) return false;
+    if (anyError) return false; 
     if (Math.abs(totalShares - 100) > 0.01) {
       toast.error(`Total must be 100% (currently ${totalShares.toFixed(2)}%)`);
       return false;
@@ -161,11 +181,14 @@ export const IncorporationForm: React.FC = () => {
     return true;
   };
 
+  // user hit finalize. send the whole squad to the backend
   const handleStep2Submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!companyId || !validateStep2()) return;
+    if (!companyId || !validateStep2()) return; // check equity before we send
+    
     setLoading(true);
     try {
+      // upload the owner list
       await addShareholders(companyId, {
         shareholders: shareholders.map(s => ({ ...s, share_percentage: Number(s.share_percentage) })),
       });

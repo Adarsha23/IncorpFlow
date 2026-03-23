@@ -16,16 +16,17 @@ class ShareholderService:
     def add_shareholders(
         self, company_id: UUID, payload: ShareholderBulkCreate
     ) -> list[Shareholder]:
-        # Validate company exists
+        # link the squad to the company and mark it done
+        # check if company actually exists
         self.company_service.get_company(company_id)
 
-        # Replace existing shareholders (idempotent re-submission)
+        # wipe any existing squad members first to prevent duplicates
         self.repo.delete_by_company(company_id)
 
-        # Bulk insert new shareholders
+        # save the whole squad at once
         shareholders = self.repo.create_bulk(company_id, payload.shareholders)
 
-        # Mark company as completed
+        # officially mark as finished
         self.company_service.mark_completed(company_id)
 
         return shareholders

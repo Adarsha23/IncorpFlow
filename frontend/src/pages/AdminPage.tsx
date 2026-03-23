@@ -3,11 +3,14 @@ import { getAllCompanies } from '../services/api';
 import type { Company } from '../types';
 
 export const AdminPage: React.FC = () => {
+  // the big list of all applications
   const [companies, setCompanies] = useState<Company[]>([]);
+  // wait while we fetch the gold
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'ALL' | 'DRAFT' | 'COMPLETED'>('ALL');
   const [password, setPassword] = useState('');
+  // check if user is actually an admin
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || 'admin123';
@@ -20,6 +23,7 @@ export const AdminPage: React.FC = () => {
     }
   }, [isAuthorized]);
 
+  // check the password and let them in
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (password === adminPassword) {
@@ -37,6 +41,7 @@ export const AdminPage: React.FC = () => {
     return matchesSearch && matchesFilter;
   });
 
+  // quick math on the company counts
   const stats = {
     total: companies.length,
     draft: companies.filter(c => c.status === 'DRAFT').length,

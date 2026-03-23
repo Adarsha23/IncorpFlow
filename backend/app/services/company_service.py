@@ -13,9 +13,11 @@ class CompanyService:
         self.repo = CompanyRepository(db)
 
     def create_draft(self, data: CompanyCreate) -> Company:
+        # start a new draft for the user
         return self.repo.create(data)
 
     def get_company(self, company_id: UUID) -> Company:
+        # find a company or throw a fit if its missing
         company = self.repo.get_by_id(company_id)
         if not company:
             raise HTTPException(
@@ -25,9 +27,11 @@ class CompanyService:
         return company
 
     def get_all_companies(self) -> list[Company]:
+        # get every company for the admin eyes
         return self.repo.get_all()
 
     def mark_completed(self, company_id: UUID) -> Company:
+        # officially done with this company
         company = self.get_company(company_id)
         if company.status == CompanyStatus.COMPLETED:
             return company

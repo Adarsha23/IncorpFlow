@@ -15,16 +15,19 @@ const client = axios.create({
 
 // ── Companies ─────────────────────────────────────────────────────────────────
 
+// tell the backend to make a new company
 export const createCompany = async (data: CompanyFormData): Promise<Company> => {
   const res = await client.post<Company>('/companies', data);
   return res.data;
 };
 
+// fetch one specific company info
 export const getCompany = async (id: string): Promise<Company> => {
   const res = await client.get<Company>(`/companies/${id}`);
   return res.data;
 };
 
+// pull the whole list for the admin
 export const getAllCompanies = async (): Promise<Company[]> => {
   const res = await client.get<Company[]>('/companies');
   return res.data;
@@ -32,6 +35,7 @@ export const getAllCompanies = async (): Promise<Company[]> => {
 
 // ── Shareholders ──────────────────────────────────────────────────────────────
 
+// send the owner list to the backend
 export const addShareholders = async (
   companyId: string,
   payload: ShareholderBulkPayload
